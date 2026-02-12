@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, Search, Plus, Trash2, Edit, FileText } from 'lucide-react';
+import { BookOpen, Upload, Plus, Trash2, Search } from 'lucide-react';
 import api from '../services/api';
-import { BookOpen } from 'lucide-react';
 
 const RootManagement = () => {
   const [roots, setRoots] = useState([]);
@@ -10,232 +9,325 @@ const RootManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  
   const itemsPerPage = 10;
 
   useEffect(() => {
     loadRoots();
   }, [currentPage, searchTerm]);
 
+  // Auto-clear messages après 5 secondes
+  useEffect(() => {
+    if (successMessage || error) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage, error]);
+
   const loadRoots = async () => {
-  try {
-    const response = await api.getRoots(searchTerm, currentPage, itemsPerPage);
-
-    const rootsData = response.data?.roots || response.data || [];
-
-    setRoots(Array.isArray(rootsData) ? rootsData : []);
-    setTotalPages(response.data?.totalPages || 1);
-
-  } catch (error) {
-    console.error('Error loading roots:', error);
-    setRoots([]); // sécurité
-  }
-};
-
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.getRoots(searchTerm, currentPage, itemsPerPage);
+      
+      // Gestion flexible du format de réponse
+      const data = response.data?.data || response.data;
+      const rootsData = data?.roots || data || [];
+      
+      setRoots(Array.isArray(rootsData) ? rootsData : []);
+      setTotalPages(data?.totalPages || Math.ceil((data?.total || rootsData.length) / itemsPerPage));
+      
+    } catch (err) {
+      // Ignorer les erreurs d'extension
+      if (err.isExtensionError) {
+        console.warn('Extension error ignored');
+        return;
+      }
+      
+      setError(err.message || 'فشل تحميل الجذور');
+      setRoots([]);
+      
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      const formData = new FormData();
-      formData.append('file', file);
+    if (!file) return;
+
+    // Validation du fichier
+    if (!file.name.endsWith('.txt')) {
+      setError('يجب أن يكون الملف بصيغة .txt');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB max
+      setError('حجم الملف كبير جداً (الحد الأقصى 5MB)');
+      return;
+    }
+
+    setSelectedFile(file);
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.uploadRoots(formData);
+      const data = response.data?.data || response.data;
+      const count = typeof data === 'number' ? data : data?.count || 0;
       
-      try {
-        await api.uploadRoots(formData);
-        loadRoots();
-        alert('تم تحميل الجذور بنجاح');
-      } catch (error) {
-        alert('خطأ في تحميل الملف');
-      }
+      setSuccessMessage(`✓ تم تحميل ${count} جذرًا بنجاح من الملف`);
+      setSelectedFile(null);
+      loadRoots();
+      
+      // Reset file input
+      event.target.value = '';
+      
+    } catch (err) {
+      if (err.isExtensionError) return;
+      setError(err.message || 'فشل تحميل الملف');
+      setSelectedFile(null);
+      
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleAddRoot = async () => {
-    if (newRoot.trim()) {
-      try {
-        await api.addRoot(newRoot);
-        setNewRoot('');
-        loadRoots();
-      } catch (error) {
-        alert('خطأ في إضافة الجذر');
+    if (!newRoot.trim()) {
+      setError('الرجاء إدخال جذر');
+      return;
+    }
+
+    // Validation: doit contenir 3 caractères arabes
+    if (newRoot.trim().length !== 3) {
+      setError('الجذر يجب أن يحتوي على 3 أحرف عربية');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await api.addRoot(newRoot.trim());
+      setSuccessMessage(`✓ تمت إضافة الجذر "${newRoot}" بنجاح`);
+      setNewRoot('');
+      loadRoots();
+      
+    } catch (err) {
+      if (err.isExtensionError) return;
+      
+      // Gérer le cas où la racine existe déjà
+      if (err.data?.message?.includes('existe déjà')) {
+        setError('الجذر موجود بالفعل');
+      } else {
+        setError(err.message || 'فشلت إضافة الجذر');
       }
+      
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteRoot = async (root) => {
-    if (window.confirm(`هل تريد حذف الجذر "${root}"؟`)) {
-      try {
-        await api.deleteRoot(root);
-        loadRoots();
-      } catch (error) {
-        alert('خطأ في حذف الجذر');
-      }
+    if (!window.confirm(`هل تريد حذف الجذر "${root}"؟`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await api.deleteRoot(root);
+      setSuccessMessage(`✓ تم حذف الجذر "${root}" بنجاح`);
+      loadRoots();
+      
+    } catch (err) {
+      if (err.isExtensionError) return;
+      setError(err.message || 'فشل حذف الجذر');
+      
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredRoots = (roots || []).filter(root =>
-  root?.toLowerCase().includes(searchTerm.toLowerCase())
-);
-
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   return (
     <div className="page-container">
       {/* Breadcrumb */}
       <div className="breadcrumb">
         <span>الرئيسية</span>
-        <span className="separator">›</span>
-        <span>إدارة الجذور</span>
+        <span className="separator">←</span>
+        <span className="active">إدارة الجذور</span>
       </div>
 
-      {/* Page Title */}
+      {/* Page Header */}
       <div className="page-header">
-        <div className="ornament-icon">
-          <BookOpen size={32} />
+        <BookOpen size={32} className="page-icon" />
+        <div>
+          <h1>إدارة الجذور</h1>
+          <p>إضافة وتحرير وحذف الجذور الثلاثية العربية</p>
         </div>
-        <h2 className="page-title">إدارة الجذور</h2>
       </div>
+
+      {/* Messages */}
+      {error && (
+        <div className="alert alert-danger">
+          <strong>خطأ:</strong> {error}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="alert alert-success">
+          {successMessage}
+        </div>
+      )}
 
       {/* Upload Section */}
-      <div className="card">
+      <div className="card upload-card">
         <div className="card-header">
-          <FileText size={20} />
-          <h3>تحميل الجذور من ملف نصي</h3>
+          <Upload size={20} />
+          <h3>رفع ملف الجذور</h3>
         </div>
         <div className="card-body">
-          <div className="upload-section">
-            <label htmlFor="file-upload" className="file-upload-label">
-              <Upload size={20} />
-              <span>اختر ملف</span>
-              <input
-                id="file-upload"
-                type="file"
-                accept=".txt"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
+          <div className="upload-area">
+            <input
+              type="file"
+              id="rootFile"
+              accept=".txt"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+              disabled={loading}
+            />
+            <label htmlFor="rootFile" className="upload-label">
+              <Upload size={24} />
+              <span>اختر ملف .txt يحتوي على جذور (جذر واحد في كل سطر)</span>
+              {selectedFile && <span className="file-name">{selectedFile.name}</span>}
             </label>
-            <span className="file-name">
-              {selectedFile ? selectedFile.name : 'No file chosen'}
-            </span>
-            <button className="btn btn-primary" onClick={() => loadRoots()}>
-              تحميل
-            </button>
           </div>
+          <p className="upload-hint">
+            • الملف يجب أن يكون بصيغة UTF-8<br />
+            • جذر واحد في كل سطر<br />
+            • كل جذر يجب أن يحتوي على 3 أحرف عربية
+          </p>
         </div>
       </div>
 
-      {/* Search and Add Section */}
+      {/* Search and Add */}
       <div className="card">
         <div className="card-body">
           <div className="action-row">
-            {/* Search */}
             <div className="search-box">
-              <Search size={20} className="search-icon" />
+              <Search size={20} />
               <input
                 type="text"
-                placeholder="إدخال جذر"
+                placeholder="ابحث عن جذر..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
+                disabled={loading}
               />
             </div>
-            <button className="btn btn-secondary">
-              <Search size={18} />
-              بحث
-            </button>
-
-            {/* Add Root */}
-            <div className="search-box">
-              <Plus size={20} className="search-icon" />
+            
+            <div className="add-root-section">
               <input
                 type="text"
-                placeholder="إدخال جذر"
+                className="form-input"
+                placeholder="جذر جديد (مثال: كتب)"
                 value={newRoot}
                 onChange={(e) => setNewRoot(e.target.value)}
-                className="search-input"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddRoot()}
+                maxLength={3}
+                disabled={loading}
               />
+              <button 
+                className="btn btn-primary"
+                onClick={handleAddRoot}
+                disabled={loading || !newRoot.trim()}
+              >
+                <Plus size={20} />
+                إضافة جذر
+              </button>
             </div>
-            <button className="btn btn-success" onClick={handleAddRoot}>
-              إضافة
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Roots Table */}
+      {/* Roots List */}
       <div className="card">
         <div className="card-header">
-          <div className="table-header">
-            <span>عرض الجذور</span>
-            <span>عمليات</span>
-          </div>
+          <BookOpen size={20} />
+          <h3>قائمة الجذور</h3>
+          <span className="root-count">{roots.length}</span>
         </div>
         <div className="card-body">
-          <button className="btn btn-danger mb-3">
-            حذف
-          </button>
-
-          <div className="roots-list">
-            {filteredRoots.map((root, index) => (
-              <div key={index} className="root-item">
-                <div className="root-content">
-                  <span className="root-text">{root}</span>
-                  <span className="root-count">8</span>
-                </div>
-                <div className="root-actions">
-                  <button className="btn-icon btn-info">
-                    <FileText size={18} />
-                  </button>
-                  <button 
-                    className="btn-icon btn-danger"
-                    onClick={() => handleDeleteRoot(root)}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+          {loading && roots.length === 0 ? (
+            <div className="loading-state">جاري التحميل...</div>
+          ) : roots.length === 0 ? (
+            <div className="empty-state">
+              <BookOpen size={48} />
+              <p>لا توجد جذور بعد</p>
+              <p className="empty-hint">ابدأ بإضافة جذر أو رفع ملف</p>
+            </div>
+          ) : (
+            <>
+              <div className="roots-grid">
+                {roots.map((root, index) => (
+                  <div key={index} className="root-item">
+                    <span className="root-text">{root}</span>
+                    <button
+                      className="btn btn-icon btn-danger"
+                      onClick={() => handleDeleteRoot(root)}
+                      title="حذف"
+                      disabled={loading}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Pagination */}
-          <div className="pagination">
-            <button 
-              className="pagination-btn"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-            >
-              «
-            </button>
-            <button 
-              className="pagination-btn"
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-            >
-              ‹
-            </button>
-            <span className="pagination-info">
-              {currentPage} من 4
-            </span>
-            <button 
-              className="pagination-btn"
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-            >
-              ›
-            </button>
-            <button 
-              className="pagination-btn"
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-            >
-              »
-            </button>
-          </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="pagination-btn"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || loading}
+                  >
+                    السابق
+                  </button>
+                  
+                  <span className="pagination-info">
+                    {currentPage} من {totalPages}
+                  </span>
+                  
+                  <button
+                    className="pagination-btn"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages || loading}
+                  >
+                    التالي
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      </div>
-
-      {/* Success Message */}
-      <div className="success-message">
-        ✓ تحميل 15 جذراً بنجاح من الملف
       </div>
     </div>
   );

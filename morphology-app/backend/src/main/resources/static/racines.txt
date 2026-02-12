@@ -1,0 +1,24 @@
+# Fichier des racines arabes trilitères
+# Format: une racine par ligne
+# Encodage: UTF-8
+
+كتب
+درس
+علم
+فهم
+قرأ
+سمع
+نظر
+ذهب
+جلس
+قام
+أكل
+شرب
+نام
+فتح
+غلق
+حمل
+رفع
+وضع
+كسر
+صنع

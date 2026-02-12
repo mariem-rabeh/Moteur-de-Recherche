@@ -2,60 +2,130 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
+// Créer une instance Axios avec configuration
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+// Intercepteur pour logger les requêtes (debug)
+axiosInstance.interceptors.request.use(
+  (config) => {
+    console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('[API Request Error]', error);
+    return Promise.reject(error);
+  }
+);
+
+// Intercepteur pour gérer les erreurs globalement
+axiosInstance.interceptors.response.use(
+  (response) => {
+    console.log(`[API Response] ${response.config.url}`, response.data);
+    return response;
+  },
+  (error) => {
+    // Ignorer les erreurs d'extensions
+    if (error.config && error.config.url && 
+        (error.config.url.includes('chrome-extension') || 
+         error.config.url.includes('site_integration'))) {
+      console.warn('[Extension Error] Ignored:', error.message);
+      return Promise.reject({ isExtensionError: true, ...error });
+    }
+
+    // Gérer les erreurs réseau
+    if (!error.response) {
+      console.error('[Network Error]', error.message);
+      return Promise.reject({
+        message: 'خطأ في الاتصال بالخادم. تحقق من تشغيل الـ Backend',
+        isNetworkError: true
+      });
+    }
+
+    // Gérer les erreurs HTTP
+    const status = error.response.status;
+    let message = 'حدث خطأ غير متوقع';
+
+    switch (status) {
+      case 400:
+        message = 'بيانات غير صحيحة';
+        break;
+      case 404:
+        message = 'المورد غير موجود';
+        break;
+      case 500:
+        message = 'خطأ في الخادم';
+        break;
+    }
+
+    console.error(`[API Error ${status}]`, error.response.data);
+    return Promise.reject({
+      message,
+      status,
+      data: error.response.data
+    });
+  }
+);
+
 const api = {
   // ==================== ROOTS ====================
-  getRoots: (search = '', page = 1, limit = 10) => 
-    axios.get(`${API_BASE_URL}/roots`, { params: { search, page, limit } }),
+  getRoots: (search = '', page = 1, limit = 10) =>
+    axiosInstance.get('/roots', { params: { search, page, limit } }),
   
-  addRoot: (root) => 
-    axios.post(`${API_BASE_URL}/roots`, { root }),
+  addRoot: (root) =>
+    axiosInstance.post('/roots', { root }),
   
-  deleteRoot: (root) => 
-    axios.delete(`${API_BASE_URL}/roots/${encodeURIComponent(root)}`),
+  deleteRoot: (root) =>
+    axiosInstance.delete(`/roots/${encodeURIComponent(root)}`),
   
-  uploadRoots: (formData) => 
-    axios.post(`${API_BASE_URL}/roots/upload`, formData, {
+  uploadRoots: (formData) =>
+    axiosInstance.post('/roots/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
 
   // ==================== SCHEMES ====================
-  getSchemes: () => 
-    axios.get(`${API_BASE_URL}/schemes`),
+  getSchemes: () =>
+    axiosInstance.get('/schemes'),
   
-  addScheme: (name, rule) => 
-    axios.post(`${API_BASE_URL}/schemes`, { name, rule }),
+  addScheme: (name, rule) =>
+    axiosInstance.post('/schemes', { name, rule }),
   
-  updateScheme: (name, rule) => 
-    axios.put(`${API_BASE_URL}/schemes/${encodeURIComponent(name)}`, { rule }),
+  updateScheme: (name, rule) =>
+    axiosInstance.put(`/schemes/${encodeURIComponent(name)}`, { rule }),
   
-  deleteScheme: (name) => 
-    axios.delete(`${API_BASE_URL}/schemes/${encodeURIComponent(name)}`),
+  deleteScheme: (name) =>
+    axiosInstance.delete(`/schemes/${encodeURIComponent(name)}`),
   
-  uploadSchemes: (formData) => 
-    axios.post(`${API_BASE_URL}/schemes/upload`, formData, {
+  uploadSchemes: (formData) =>
+    axiosInstance.post('/schemes/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
 
   // ==================== GENERATION ====================
-  generateWord: (root, scheme) => 
-    axios.post(`${API_BASE_URL}/generate/word`, { root, scheme }),
+  generateWord: (root, scheme) =>
+    axiosInstance.post('/generate/word', { root, scheme }),
   
-  generateFamily: (root) => 
-    axios.post(`${API_BASE_URL}/generate/family`, { root }),
+  generateFamily: (root) =>
+    axiosInstance.post('/generate/family', { root }),
 
   // ==================== VALIDATION ====================
-  validateWord: (word, root) => 
-    axios.post(`${API_BASE_URL}/validate/check`, { word, root }),
+  validateWord: (word, root) =>
+    axiosInstance.post('/validate/check', { word, root }),
   
-  decomposeWord: (word) => 
-    axios.post(`${API_BASE_URL}/validate/decompose`, { word }),
+  decomposeWord: (word) =>
+    axiosInstance.post('/validate/decompose', { word }),
   
-  findAllRoots: (word) => 
-    axios.post(`${API_BASE_URL}/validate/find-roots`, { word }),
+  findAllRoots: (word) =>
+    axiosInstance.post('/validate/find-roots', { word }),
 
   // ==================== STATISTICS ====================
-  getStatistics: () => 
-    axios.get(`${API_BASE_URL}/statistics`)
+  getStatistics: () =>
+    axiosInstance.get('/statistics')
 };
 
 export default api;

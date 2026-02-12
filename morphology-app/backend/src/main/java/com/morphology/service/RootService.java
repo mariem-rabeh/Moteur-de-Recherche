@@ -1,19 +1,20 @@
 package com.morphology.service;
 
-import com.morphology.model.ArbreAVL;
-import com.morphology.model.NoeudAVL;
-import com.morphology.util.FileUtils;
-import com.morphology.util.ValidationUtils;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.morphology.model.ArbreAVL;
+import com.morphology.model.NoeudAVL;
+import com.morphology.util.ValidationUtils;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
@@ -78,7 +79,7 @@ public class RootService {
         // Filtrer par recherche si nécessaire
         if (search != null && !search.isEmpty()) {
             allRoots = allRoots.stream()
-                .filter(root -> root.contains(search))
+                .filter(root -> root.startsWith(search))
                 .toList();
         }
         
@@ -101,7 +102,7 @@ public class RootService {
         
         if (search != null && !search.isEmpty()) {
             return (int) allRoots.stream()
-                .filter(root -> root.contains(search))
+                .filter(root -> root.startsWith(search))
                 .count();
         }
         

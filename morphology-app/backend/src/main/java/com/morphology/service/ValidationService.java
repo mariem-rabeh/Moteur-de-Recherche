@@ -1,15 +1,17 @@
 package com.morphology.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.morphology.dto.response.DecompositionResponse;
 import com.morphology.dto.response.ValidationResponse;
 import com.morphology.model.NoeudAVL;
 import com.morphology.model.Scheme;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Service

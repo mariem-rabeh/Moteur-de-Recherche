@@ -1,0 +1,410 @@
+# Arabic Morphology System - Backend API
+
+A Spring Boot REST API for managing and analyzing Arabic morphological structures using AVL trees for root storage and hash tables for morphological schemes.
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [API Endpoints](#api-endpoints)
+- [Data Structures](#data-structures)
+- [Configuration](#configuration)
+- [Usage Examples](#usage-examples)
+- [Contributing](#contributing)
+
+## 🔍 Overview
+
+This application provides a comprehensive system for working with Arabic morphology. It allows users to:
+- Store and manage trilateral Arabic roots (3-letter roots)
+- Define and apply morphological schemes (patterns)
+- Generate derived words from roots using schemes
+- Validate and decompose Arabic words
+- Track word frequencies and derivatives
+
+## ✨ Features
+
+### Root Management
+- **Add/Delete/Search** Arabic trilateral roots
+- **Pagination** and search filtering
+- **File upload** support for bulk root import
+- **AVL tree** implementation for balanced storage
+
+### Scheme Management
+- **CRUD operations** for morphological schemes
+- **Pattern-based** word generation (using positions 1, 2, 3)
+- **Hash table** implementation for efficient storage
+- **File upload** for bulk scheme import
+
+### Word Generation
+- Generate individual words from root + scheme
+- Generate entire morphological families
+- Track derivatives and frequencies
+
+### Word Validation
+- Validate if a word derives from a specific root
+- Decompose words into root + scheme
+- Find all possible roots for a given word
+
+### Statistics
+- Total roots and schemes count
+- Derivative counts and frequencies
+- Average derivatives per root
+
+## 🛠 Technology Stack
+
+- **Java 17+**
+- **Spring Boot 3.x**
+- **Spring Web** (REST API)
+- **Lombok** (boilerplate reduction)
+- **Jakarta Validation** (input validation)
+- **SLF4J** (logging)
+
+## 📁 Project Structure
+
+```
+com.morphology/
+├── config/
+│   └── CorsConfig.java              # CORS configuration
+├── controller/
+│   ├── GenerationController.java    # Word generation endpoints
+│   ├── RootController.java          # Root management endpoints
+│   ├── SchemeController.java        # Scheme management endpoints
+│   ├── StatisticsController.java    # Statistics endpoints
+│   └── ValidationController.java    # Word validation endpoints
+├── dto/
+│   ├── request/                     # Request DTOs
+│   └── response/                    # Response DTOs
+├── model/
+│   ├── ArbreAVL.java               # AVL tree implementation
+│   ├── NoeudAVL.java               # AVL tree node
+│   ├── MotDerive.java              # Derivative word model
+│   ├── Scheme.java                 # Morphological scheme
+│   └── TableHachage.java           # Hash table implementation
+├── service/
+│   ├── GenerationService.java      # Word generation logic
+│   ├── RootService.java            # Root management logic
+│   ├── SchemeService.java          # Scheme management logic
+│   └── ValidationService.java      # Validation logic
+└── util/
+    ├── FileUtils.java              # File operations utilities
+    └── ValidationUtils.java        # Validation utilities
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Java 17 or higher
+- Maven 3.6+
+- Your favorite IDE (IntelliJ IDEA, Eclipse, VS Code)
+
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone <repository-url>
+cd morphology-backend
+```
+
+2. **Build the project**
+```bash
+mvn clean install
+```
+
+3. **Run the application**
+```bash
+.\mvnw.cmd spring-boot:run                                                                             ```
+
+The server will start on `http://localhost:8080`
+
+### Frontend Connection
+
+The CORS configuration allows connections from `http://localhost:3000` (React frontend).
+
+## 🔌 API Endpoints
+
+### Root Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/roots` | Get all roots (paginated) |
+| GET | `/roots/{root}` | Search for a specific root |
+| POST | `/roots` | Add a new root |
+| DELETE | `/roots/{root}` | Delete a root |
+| POST | `/roots/upload` | Upload roots from file |
+
+**Query Parameters for GET /roots:**
+- `search` (optional): Filter roots
+- `page` (default: 1): Page number
+- `limit` (default: 10): Items per page
+
+### Scheme Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/schemes` | Get all schemes |
+| POST | `/schemes` | Add a new scheme |
+| PUT | `/schemes/{name}` | Update a scheme |
+| DELETE | `/schemes/{name}` | Delete a scheme |
+| POST | `/schemes/upload` | Upload schemes from file |
+
+### Word Generation
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/generate/word` | Generate word from root + scheme |
+| POST | `/generate/family` | Generate entire morphological family |
+
+### Word Validation
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/validate/check` | Validate word against root |
+| POST | `/validate/decompose` | Decompose word into root + scheme |
+| POST | `/validate/find-roots` | Find all possible roots for word |
+
+### Statistics
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/statistics` | Get system statistics |
+
+## 🗃 Data Structures
+
+### AVL Tree (ArbreAVL)
+- Self-balancing binary search tree
+- Used for storing Arabic roots alphabetically
+- O(log n) insertion, deletion, and search operations
+- Automatic height balancing through rotations
+
+### Hash Table (TableHachage)
+- Fixed size: 128 buckets
+- DJB2 hash function for string hashing
+- Chaining for collision resolution
+- Used for storing morphological schemes
+
+### Node (NoeudAVL)
+Each root node contains:
+- The trilateral root (3 Arabic characters)
+- List of derived words with frequencies
+- Root usage frequency
+- Tree height for balancing
+
+### Scheme (Scheme)
+Pattern definition:
+- Name: Identifier for the scheme
+- Rule: Pattern using 1, 2, 3 for root letters
+- Example: "1ا2ِ3" transforms "كتب" → "كاتِب"
+
+## ⚙️ Configuration
+
+### CORS Settings (CorsConfig.java)
+
+```java
+@Configuration
+public class CorsConfig {
+    @Bean
+    public CorsFilter corsFilter() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        config.setAllowedHeaders(Arrays.asList("*"));
+        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // ...
+    }
+}
+```
+
+To allow additional origins, add them to the `setAllowedOrigins` list.
+
+### Application Properties
+
+Create `application.properties` or `application.yml`:
+
+```properties
+# Server Configuration
+server.port=8080
+
+# Logging
+logging.level.com.morphology=DEBUG
+logging.level.org.springframework.web=INFO
+
+# File Upload
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+```
+
+## 📝 Usage Examples
+
+### Adding a Root
+
+```bash
+curl -X POST http://localhost:8080/roots \
+  -H "Content-Type: application/json" \
+  -d '{"root": "كتب"}'
+```
+
+### Adding a Scheme
+
+```bash
+curl -X POST http://localhost:8080/schemes \
+  -H "Content-Type: application/json" \
+  -d '{"name": "فاعل", "rule": "1ا2ِ3"}'
+```
+
+### Generating a Word
+
+```bash
+curl -X POST http://localhost:8080/generate/word \
+  -H "Content-Type: application/json" \
+  -d '{"root": "كتب", "scheme": "فاعل"}'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "generatedWord": "كاتِب",
+    "root": "كتب",
+    "scheme": "فاعل",
+    "success": true,
+    "message": "Mot généré avec succès : كاتِب"
+  }
+}
+```
+
+### Validating a Word
+
+```bash
+curl -X POST http://localhost:8080/validate/check \
+  -H "Content-Type: application/json" \
+  -d '{"word": "كاتِب", "root": "كتب"}'
+```
+
+### Uploading Roots from File
+
+**File format (UTF-8):**
+```
+كتب
+درس
+علم
+# Comments start with #
+```
+
+```bash
+curl -X POST http://localhost:8080/roots/upload \
+  -F "file=@roots.txt"
+```
+
+### Uploading Schemes from File
+
+**File format (UTF-8):**
+```
+فاعل|1ا2ِ3
+مفعول|م1و2و3
+مُفاعِل|مُ1ا2ِ3
+```
+
+```bash
+curl -X POST http://localhost:8080/schemes/upload \
+  -F "file=@schemes.txt"
+```
+
+## 📊 Response Format
+
+All API responses follow this structure:
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": { /* actual data */ }
+}
+```
+
+Error responses:
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "data": null
+}
+```
+
+## 🧪 Testing
+
+Run tests with:
+```bash
+mvn test
+```
+
+## 📚 Key Concepts
+
+### Arabic Root System
+- Arabic words are built from trilateral roots (3 consonants)
+- Example: ك-ت-ب (k-t-b) relates to "writing"
+
+### Morphological Schemes
+- Patterns that transform roots into derived words
+- Use positions 1, 2, 3 for root letters
+- Example: "1ا2ِ3" + "كتب" = "كاتِب" (writer)
+
+### Common Schemes
+- **فاعل** (1ا2ِ3): Active participle
+- **مفعول** (م1و2و3): Passive participle  
+- **مَفعَل** (م12َ3): Place/time noun
+- **تفاعل** (ت1ا2ُ3): Mutual action
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+Change the port in `application.properties`:
+```properties
+server.port=8081
+```
+
+### CORS Issues
+Add your frontend URL to `CorsConfig.java`:
+```java
+config.setAllowedOrigins(Arrays.asList(
+    "http://localhost:3000",
+    "http://your-frontend-url"
+));
+```
+
+### UTF-8 Encoding Issues
+Ensure all files are saved with UTF-8 encoding. The application uses `StandardCharsets.UTF_8` for file operations.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 👥 Authors
+
+- Your Name - Initial work
+
+## 🙏 Acknowledgments
+
+- Arabic morphology patterns and rules
+- AVL tree algorithm
+- DJB2 hash function
+
+## 📞 Support
+
+For support, email support@example.com or open an issue in the repository.
+
+---
+
+Made with ❤️ for Arabic language processing

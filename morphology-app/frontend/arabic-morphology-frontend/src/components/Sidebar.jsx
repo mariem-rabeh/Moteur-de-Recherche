@@ -5,10 +5,7 @@ import {
   FileText, 
   Wand2, 
   CheckCircle, 
-  BarChart3,
-  Search,
-  Download,
-  Upload
+  BarChart3
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -18,39 +15,22 @@ const Sidebar = () => {
     { 
       path: '/roots', 
       icon: <BookOpen size={20} />, 
-      label: 'إدارة الجذور',
-      subItems: [
-        { label: 'تحميل الجذور', icon: <Upload size={16} /> },
-        { label: 'البحث عن جذور', icon: <Search size={16} /> },
-        { label: 'حفظ جذور', icon: <Download size={16} /> }
-      ]
+      label: 'إدارة الجذور'
     },
     { 
       path: '/schemes', 
       icon: <FileText size={20} />, 
-      label: 'إدارة الأوزان الصرفية',
-      subItems: [
-        { label: 'إضافة وزن', icon: <Upload size={16} /> },
-        { label: 'تعديل وزن', icon: <Search size={16} /> },
-        { label: 'حفظ الوزان', icon: <Download size={16} /> }
-      ]
+      label: 'إدارة الأوزان الصرفية'
     },
     { 
       path: '/generation', 
       icon: <Wand2 size={20} />, 
-      label: 'التوليد الصرفي',
-      subItems: [
-        { label: 'توليد كلمة', icon: <Wand2 size={16} /> },
-        { label: 'توليد عائلة صرفية', icon: <FileText size={16} /> }
-      ]
+      label: 'التوليد الصرفي'
     },
     { 
       path: '/validation', 
       icon: <CheckCircle size={20} />, 
-      label: 'الصحة الصرفية',
-      subItems: [
-        { label: 'وصف منكمل', icon: <FileText size={16} /> }
-      ]
+      label: 'الصحة الصرفية'
     },
     { 
       path: '/statistics', 
@@ -79,17 +59,6 @@ const Sidebar = () => {
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
             </Link>
-            
-            {item.subItems && location.pathname === item.path && (
-              <div className="sub-items">
-                {item.subItems.map((subItem, index) => (
-                  <div key={index} className="sub-item">
-                    <span className="sub-icon">{subItem.icon}</span>
-                    <span className="sub-label">{subItem.label}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         ))}
       </nav>

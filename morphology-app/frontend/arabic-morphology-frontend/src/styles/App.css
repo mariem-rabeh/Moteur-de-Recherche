@@ -1097,3 +1097,65 @@ body {
   font-size: 1.5rem;
   color: var(--primary-teal);
 }
+/* Alert Messages */
+.alert {
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+.alert-success {
+  background-color: rgba(74, 124, 89, 0.1);
+  border: 2px solid var(--success-green);
+  color: var(--success-green);
+}
+
+.alert-danger {
+  background-color: rgba(166, 77, 77, 0.1);
+  border: 2px solid var(--danger-red);
+  color: var(--danger-red);
+}
+
+.alert strong {
+  font-weight: 700;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading State */
+.loading-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--primary-teal);
+  font-size: 1.1rem;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #999;
+}
+
+.empty-state svg {
+  color: #ddd;
+  margin-bottom: 1rem;
+}
+
+.empty-hint {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}

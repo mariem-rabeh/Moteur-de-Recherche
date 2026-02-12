@@ -1,0 +1,9 @@
+# Fichier des schèmes morphologiques arabes
+# Format: nom|règle
+# Dans la règle: 1 = première lettre, 2 = deuxième lettre, 3 = troisième lettre
+# Encodage: UTF-8
+تفعّل|ت12ّ3
+تفاعل|ت1ا23
+انفعل|ان123
+افتعل|ا1ت23
+مفعول|م12و3
