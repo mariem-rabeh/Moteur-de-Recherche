@@ -11,15 +11,27 @@ public class NoeudAVL {
     private int hauteur;
     private List<MotDerive> listeDerives;
     private int frequenceRacine;
+     // ✅ NOUVEAU CHAMP - Cache du type morphologique
+    private RootType typeMorphologique;  // ← AJOUTE CETTE LIGNE
 
     public NoeudAVL(String racine) {
         this.racine = racine;
         this.hauteur = 1;
         this.listeDerives = new ArrayList<>();
         this.frequenceRacine = 0;
+        this.typeMorphologique = null; // ← AJOUTE CETTE LIGNE (initialisé à null)
+    }
+ // Getters et Setters
+    
+    public RootType getTypeMorphologique() {
+        return typeMorphologique;
     }
 
-    // Getters et Setters
+
+    public void setTypeMorphologique(RootType type) {
+        this.typeMorphologique = type;
+    }
+   
     public String getRacine() {
         return racine;
     }

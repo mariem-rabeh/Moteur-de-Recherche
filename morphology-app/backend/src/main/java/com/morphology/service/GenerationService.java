@@ -1,6 +1,8 @@
 package com.morphology.service;
 
 import com.morphology.dto.response.GeneratedWordResponse;
+import com.morphology.model.Root;
+import com.morphology.model.RootType;
 import com.morphology.model.Scheme;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,45 +18,71 @@ public class GenerationService {
     
     private final RootService rootService;
     private final SchemeService schemeService;
+    private final TransformationService transformationService;
     
     /**
      * Générer un mot à partir d'une racine et d'un schème
+     * AVEC application des transformations morphologiques
      */
-    public GeneratedWordResponse generateWord(String root, String schemeName) {
-        log.debug("Génération: racine={}, schème={}", root, schemeName);
+    public GeneratedWordResponse generateWord(String rootText, String schemeName) {
+        log.debug("Génération: racine={}, schème={}", rootText, schemeName);
         
-        // Vérifier que la racine existe
-        if (!rootService.rootExists(root)) {
+        // 1. Vérifier que la racine existe
+        if (!rootService.rootExists(rootText)) {
             return new GeneratedWordResponse(
-                null, root, schemeName, false,
-                "Erreur : La racine '" + root + "' n'existe pas dans la base."
+                null, rootText, schemeName, false,
+                "Erreur : La racine '" + rootText + "' n'existe pas dans la base."
             );
         }
         
-        // Vérifier que le schème existe
+        // 2. Vérifier que le schème existe
         Scheme scheme = schemeService.searchScheme(schemeName);
         if (scheme == null) {
             return new GeneratedWordResponse(
-                null, root, schemeName, false,
+                null, rootText, schemeName, false,
                 "Erreur : Le schème '" + schemeName + "' n'existe pas."
             );
         }
         
-        // Générer le mot
-        String generatedWord = scheme.appliquer(root);
+        // 3. Récupérer le type morphologique (O(1) depuis le cache)
+        RootType type = rootService.getRootType(rootText);
+        
+        // 4. Générer le mot de base
+        String generatedWord = scheme.appliquer(rootText);
         if (generatedWord.startsWith("Erreur")) {
             return new GeneratedWordResponse(
-                null, root, schemeName, false, generatedWord
+                null, rootText, schemeName, false, generatedWord
             );
         }
         
-        // Ajouter le dérivé à la racine
-        rootService.addDerivativeToRoot(root, generatedWord);
+        // 5. Appliquer les transformations morphologiques
+        if (type != null && type != RootType.SALIM) {
+            Root root = new Root(rootText);
+            root.setType(type);
+            
+            String motTransforme = transformationService.appliquerTransformations(
+                generatedWord, type, root
+            );
+            
+            if (!motTransforme.equals(generatedWord)) {
+                log.info("🔄 Transformation appliquée: {} → {} (Type: {})",
+                         generatedWord, motTransforme, type.getNomArabe());
+                generatedWord = motTransforme;
+            }
+        }
         
-        log.info("Mot généré: {}", generatedWord);
+        // 6. Ajouter le dérivé à la racine
+        rootService.addDerivativeToRoot(rootText, generatedWord);
+        
+        // 7. Préparer le message de succès
+        String message = "Mot généré avec succès : " + generatedWord;
+        if (type != null && type != RootType.SALIM) {
+            message += " (Type racine: " + type.getNomArabe() + ")";
+        }
+        
+        log.info("✅ {}", message);
         return new GeneratedWordResponse(
-            generatedWord, root, schemeName, true,
-            "Mot généré avec succès : " + generatedWord
+            generatedWord, rootText, schemeName, true, message
         );
     }
     
@@ -66,7 +94,6 @@ public class GenerationService {
         
         List<GeneratedWordResponse> family = new ArrayList<>();
         
-        // Vérifier que la racine existe
         if (!rootService.rootExists(root)) {
             GeneratedWordResponse error = new GeneratedWordResponse(
                 null, root, null, false,
@@ -76,7 +103,6 @@ public class GenerationService {
             return family;
         }
         
-        // Générer avec tous les schèmes
         List<String> schemeNames = schemeService.getSchemeNames();
         for (String schemeName : schemeNames) {
             GeneratedWordResponse result = generateWord(root, schemeName);

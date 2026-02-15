@@ -1,19 +1,33 @@
 package com.morphology.controller;
 
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.morphology.dto.request.AddRootRequest;
 import com.morphology.dto.response.ApiResponse;
 import com.morphology.dto.response.RootsPageResponse;
 import com.morphology.model.NoeudAVL;
 import com.morphology.service.RootService;
+import com.morphology.dto.response.RootAnalysisResponse;
+import com.morphology.model.Root;
+import com.morphology.service.MorphoAnalyzer;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 
 @Slf4j
 @RestController
@@ -22,7 +36,8 @@ import java.util.List;
 public class RootController {
     
     private final RootService rootService;
-    
+    @Autowired
+    private MorphoAnalyzer morphoAnalyzer;
     /**
      * GET /api/roots?search=...&page=1&limit=10
      * Obtenir la liste des racines (paginée)
@@ -128,5 +143,46 @@ public class RootController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Erreur: " + e.getMessage()));
         }
+    }
+
+    @PostMapping("/analyze")
+    public ResponseEntity<ApiResponse<RootAnalysisResponse>> analyzeRoot(
+            @RequestBody String racine) {
+        
+        log.info("POST /roots/analyze - root={}", racine);
+        
+        String cleanRoot = racine.replace("\"", "").trim();
+        
+        Root root = morphoAnalyzer.analyserRacine(cleanRoot);
+        
+        if (!root.isValid()) {
+            RootAnalysisResponse errorResponse = RootAnalysisResponse.error(
+                cleanRoot, root.getErrorMessage()
+            );
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(errorResponse.getErrorMessage(), errorResponse));
+        }
+        
+        String explication = morphoAnalyzer.genererExplication(root);
+        
+        RootAnalysisResponse response = RootAnalysisResponse.success(
+            root.getRacine(),
+            root.getType().getNomFrancais(),
+            root.getType().getNomArabe(),
+            root.getType().getEmoji(),
+            root.getType().getDescription(),
+            explication,
+            root.getLettres()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+    
+    @GetMapping("/analyze/{root}")
+    public ResponseEntity<ApiResponse<RootAnalysisResponse>> analyzeRootGet(
+            @PathVariable String root) {
+        
+        log.info("GET /roots/analyze/{}", root);
+        return analyzeRoot(root);
     }
 }

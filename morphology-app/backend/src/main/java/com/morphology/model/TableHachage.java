@@ -193,4 +193,41 @@ public class TableHachage {
         sb.append("]");
         return sb.toString();
     }
+
+    // ... ton code existant ...
+
+    // ← AJOUTE CES 3 MÉTHODES ICI
+    
+    public java.util.List<Scheme> getTousLesSchemes() {
+        java.util.List<Scheme> schemes = new java.util.ArrayList<>();
+        
+        for (int i = 0; i < TAILLE; i++) {
+            Maillon current = table[i];
+            while (current != null) {
+                schemes.add(current.valeur);
+                current = current.suivant;
+            }
+        }
+        
+        return schemes;
+    }
+    
+    public java.util.List<String> getToutesLesCles() {
+        java.util.List<String> cles = new java.util.ArrayList<>();
+        
+        for (int i = 0; i < TAILLE; i++) {
+            Maillon current = table[i];
+            while (current != null) {
+                cles.add(current.cle);
+                current = current.suivant;
+            }
+        }
+        
+        return cles;
+    }
+    
+    public boolean contient(String cle) {
+        return rechercher(cle) != null;
+    }
+
 }
