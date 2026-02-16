@@ -1,15 +1,17 @@
 package com.morphology.service;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.morphology.dto.response.GeneratedWordResponse;
 import com.morphology.model.Root;
 import com.morphology.model.RootType;
 import com.morphology.model.Scheme;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -19,16 +21,18 @@ public class GenerationService {
     private final RootService rootService;
     private final SchemeService schemeService;
     private final TransformationService transformationService;
+    private final MorphoAnalyzer morphoAnalyzer;
     
     /**
      * Générer un mot à partir d'une racine et d'un schème
      * AVEC application des transformations morphologiques
      */
     public GeneratedWordResponse generateWord(String rootText, String schemeName) {
-        log.debug("Génération: racine={}, schème={}", rootText, schemeName);
+        log.debug("🔧 Génération: racine={}, schème={}", rootText, schemeName);
         
         // 1. Vérifier que la racine existe
         if (!rootService.rootExists(rootText)) {
+            log.error("❌ Racine introuvable: {}", rootText);
             return new GeneratedWordResponse(
                 null, rootText, schemeName, false,
                 "Erreur : La racine '" + rootText + "' n'existe pas dans la base."
@@ -38,51 +42,75 @@ public class GenerationService {
         // 2. Vérifier que le schème existe
         Scheme scheme = schemeService.searchScheme(schemeName);
         if (scheme == null) {
+            log.error("❌ Schème introuvable: {}", schemeName);
             return new GeneratedWordResponse(
                 null, rootText, schemeName, false,
                 "Erreur : Le schème '" + schemeName + "' n'existe pas."
             );
         }
         
-        // 3. Récupérer le type morphologique (O(1) depuis le cache)
+        // 3. Récupérer ou calculer le type morphologique
         RootType type = rootService.getRootType(rootText);
         
-        // 4. Générer le mot de base
+        // Si le type n'est pas dans le cache, l'analyser
+        if (type == null) {
+            Root analysis = morphoAnalyzer.analyserRacine(rootText);
+            if (analysis.isValid()) {
+                type = analysis.getType();
+                log.info("Type morphologique calculé: {} pour {}", type.getNomArabe(), rootText);
+            } else {
+                log.error("❌ Analyse échouée: {}", analysis.getErrorMessage());
+                return new GeneratedWordResponse(
+                    null, rootText, schemeName, false, analysis.getErrorMessage()
+                );
+            }
+        }
+        
+        // 4. Générer le mot de base (application mécanique du schème)
         String generatedWord = scheme.appliquer(rootText);
         if (generatedWord.startsWith("Erreur")) {
+            log.error("❌ Application du schème échouée: {}", generatedWord);
             return new GeneratedWordResponse(
                 null, rootText, schemeName, false, generatedWord
             );
         }
         
-        // 5. Appliquer les transformations morphologiques
-        if (type != null && type != RootType.SALIM) {
-            Root root = new Root(rootText);
-            root.setType(type);
-            
-            String motTransforme = transformationService.appliquerTransformations(
+        log.debug("📝 Mot de base généré: {}", generatedWord);
+        
+        // 5. Créer l'objet Root pour les transformations
+        Root root = new Root(rootText);
+        root.setType(type);
+        
+        // 6. Appliquer les transformations morphologiques si nécessaire
+        String finalWord = generatedWord;
+        if (type != RootType.SALIM) {
+            finalWord = transformationService.appliquerTransformations(
                 generatedWord, type, root
             );
             
-            if (!motTransforme.equals(generatedWord)) {
-                log.info("🔄 Transformation appliquée: {} → {} (Type: {})",
-                         generatedWord, motTransforme, type.getNomArabe());
-                generatedWord = motTransforme;
+            if (!finalWord.equals(generatedWord)) {
+                log.info("✨ Transformation appliquée: {} → {} (Type: {})",
+                    generatedWord, finalWord, type.getNomArabe());
+            } else {
+                log.debug("⚪ Aucune transformation nécessaire pour ce schème");
             }
+        } else {
+            log.debug("✅ Racine SALIM - pas de transformation");
         }
         
-        // 6. Ajouter le dérivé à la racine
-        rootService.addDerivativeToRoot(rootText, generatedWord);
+        // 7. Ajouter le dérivé à la racine
+        rootService.addDerivativeToRoot(rootText, finalWord);
         
-        // 7. Préparer le message de succès
-        String message = "Mot généré avec succès : " + generatedWord;
-        if (type != null && type != RootType.SALIM) {
-            message += " (Type racine: " + type.getNomArabe() + ")";
+        // 8. Préparer le message de succès
+        String message = String.format("✅ Mot généré : %s", finalWord);
+        if (type != RootType.SALIM) {
+            message += String.format(" (Racine %s: %s)", 
+                type.getNomFrancais(), type.getNomArabe());
         }
         
-        log.info("✅ {}", message);
+        log.info(message);
         return new GeneratedWordResponse(
-            generatedWord, rootText, schemeName, true, message
+            finalWord, rootText, schemeName, true, message
         );
     }
     
@@ -90,7 +118,7 @@ public class GenerationService {
      * Générer toute la famille morphologique d'une racine
      */
     public List<GeneratedWordResponse> generateFamily(String root) {
-        log.debug("Génération de la famille pour: {}", root);
+        log.debug("👨‍👩‍👧‍👦 Génération de la famille pour: {}", root);
         
         List<GeneratedWordResponse> family = new ArrayList<>();
         
@@ -104,12 +132,14 @@ public class GenerationService {
         }
         
         List<String> schemeNames = schemeService.getSchemeNames();
+        log.info("Génération de {} mots pour la racine {}", schemeNames.size(), root);
+        
         for (String schemeName : schemeNames) {
             GeneratedWordResponse result = generateWord(root, schemeName);
             family.add(result);
         }
         
-        log.info("Famille générée: {} mots pour la racine {}", family.size(), root);
+        log.info("✅ Famille générée: {} mots pour la racine {}", family.size(), root);
         return family;
     }
 }
