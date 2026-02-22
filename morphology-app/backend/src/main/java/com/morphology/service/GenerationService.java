@@ -17,129 +17,123 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class GenerationService {
-    
-    private final RootService rootService;
-    private final SchemeService schemeService;
+
+    private final RootService          rootService;
+    private final SchemeService        schemeService;
     private final TransformationService transformationService;
-    private final MorphoAnalyzer morphoAnalyzer;
-    
-    /**
-     * Générer un mot à partir d'une racine et d'un schème
-     * AVEC application des transformations morphologiques
-     */
+    private final MorphoAnalyzer       morphoAnalyzer;
+
+    // ================================================================
+    // Générer un mot — racine + schème
+    // ================================================================
     public GeneratedWordResponse generateWord(String rootText, String schemeName) {
         log.debug("🔧 Génération: racine={}, schème={}", rootText, schemeName);
-        
-        // 1. Vérifier que la racine existe
-        if (!rootService.rootExists(rootText)) {
-            log.error("❌ Racine introuvable: {}", rootText);
-            return new GeneratedWordResponse(
-                null, rootText, schemeName, false,
-                "Erreur : La racine '" + rootText + "' n'existe pas dans la base."
-            );
-        }
-        
-        // 2. Vérifier que le schème existe
+
+        // Validation des entrées
+        if (rootText == null || rootText.isBlank())
+            return erreur(null, schemeName, "La racine ne peut pas être vide.");
+        if (schemeName == null || schemeName.isBlank())
+            return erreur(rootText, null, "Le nom du schème ne peut pas être vide.");
+
+        // 1. Racine existe ?
+        if (!rootService.rootExists(rootText))
+            return erreur(rootText, schemeName,
+                "La racine '" + rootText + "' n'existe pas dans la base.");
+
+        // 2. Schème existe ?
         Scheme scheme = schemeService.searchScheme(schemeName);
-        if (scheme == null) {
-            log.error("❌ Schème introuvable: {}", schemeName);
-            return new GeneratedWordResponse(
-                null, rootText, schemeName, false,
-                "Erreur : Le schème '" + schemeName + "' n'existe pas."
-            );
+        if (scheme == null)
+            return erreur(rootText, schemeName,
+                "Le schème '" + schemeName + "' n'existe pas.");
+
+        // 3. Analyser la racine UNE SEULE FOIS — réutiliser le même objet Root
+        Root root = morphoAnalyzer.analyserRacine(rootText);
+        if (!root.isValid())
+            return erreur(rootText, schemeName, root.getErrorMessage());
+
+        RootType type = root.getType();
+
+        // Mettre à jour le cache si nécessaire
+        if (rootService.getRootType(rootText) == null)
+            rootService.setRootType(rootText, type);
+
+        // 4. Substitution brute du schème
+        String motBrut = scheme.appliquer(rootText);
+        if (motBrut == null || motBrut.isBlank()) {
+            String msg = scheme.getLastError() != null ? scheme.getLastError()
+                : "Le schème '" + schemeName + "' n'a pas pu être appliqué.";
+            return erreur(rootText, schemeName, msg);
         }
-        
-        // 3. Récupérer ou calculer le type morphologique
-        RootType type = rootService.getRootType(rootText);
-        
-        // Si le type n'est pas dans le cache, l'analyser
-        if (type == null) {
-            Root analysis = morphoAnalyzer.analyserRacine(rootText);
-            if (analysis.isValid()) {
-                type = analysis.getType();
-                log.info("Type morphologique calculé: {} pour {}", type.getNomArabe(), rootText);
-            } else {
-                log.error("❌ Analyse échouée: {}", analysis.getErrorMessage());
-                return new GeneratedWordResponse(
-                    null, rootText, schemeName, false, analysis.getErrorMessage()
-                );
-            }
-        }
-        
-        // 4. Générer le mot de base (application mécanique du schème)
-        String generatedWord = scheme.appliquer(rootText);
-        if (generatedWord.startsWith("Erreur")) {
-            log.error("❌ Application du schème échouée: {}", generatedWord);
-            return new GeneratedWordResponse(
-                null, rootText, schemeName, false, generatedWord
-            );
-        }
-        
-        log.debug("📝 Mot de base généré: {}", generatedWord);
-        
-        // 5. Créer l'objet Root pour les transformations
-        Root root = new Root(rootText);
-        root.setType(type);
-        
-        // 6. Appliquer les transformations morphologiques si nécessaire
-        String finalWord = generatedWord;
-        if (type != RootType.SALIM) {
-            finalWord = transformationService.appliquerTransformations(
-                generatedWord, type, root
-            );
-            
-            if (!finalWord.equals(generatedWord)) {
-                log.info("✨ Transformation appliquée: {} → {} (Type: {})",
-                    generatedWord, finalWord, type.getNomArabe());
-            } else {
-                log.debug("⚪ Aucune transformation nécessaire pour ce schème");
-            }
-        } else {
-            log.debug("✅ Racine SALIM - pas de transformation");
-        }
-        
-        // 7. Ajouter le dérivé à la racine
-        rootService.addDerivativeToRoot(rootText, finalWord);
-        
-        // 8. Préparer le message de succès
-        String message = String.format("✅ Mot généré : %s", finalWord);
-        if (type != RootType.SALIM) {
-            message += String.format(" (Racine %s: %s)", 
-                type.getNomFrancais(), type.getNomArabe());
-        }
-        
-        log.info(message);
-        return new GeneratedWordResponse(
-            finalWord, rootText, schemeName, true, message
+
+        log.debug("📝 Mot brut (avant transformation): {}", motBrut);
+
+        // 5. Transformations morphologiques — schemeId transmis pour MITHAL/AJWAF
+        String motFinal = transformationService.appliquerTransformations(
+            motBrut, type, root, scheme.getId()
         );
+
+        // 6. Vérifier que le résultat n'est pas vide
+        if (motFinal == null || motFinal.isBlank())
+            return erreur(rootText, schemeName,
+                "La transformation a produit un résultat vide. "
+              + "Vérifier la compatibilité du schème avec ce type de racine.");
+
+        if (!motFinal.equals(motBrut))
+            log.info("✨ {} → {} ({})", motBrut, motFinal, type.getNomArabe());
+
+        // 7. Enregistrer le dérivé
+        rootService.addDerivativeToRoot(rootText, motFinal);
+
+        String message = "✅ Mot généré : " + motFinal;
+        if (type != RootType.SALIM)
+            message += " (Racine " + type.getNomFrancais() + " : " + type.getNomArabe() + ")";
+
+        return new GeneratedWordResponse(motFinal, rootText, schemeName, true, message);
     }
-    
-    /**
-     * Générer toute la famille morphologique d'une racine
-     */
-    public List<GeneratedWordResponse> generateFamily(String root) {
-        log.debug("👨‍👩‍👧‍👦 Génération de la famille pour: {}", root);
-        
+
+    // ================================================================
+    // Générer la famille morphologique complète
+    // ================================================================
+    public List<GeneratedWordResponse> generateFamily(String rootText) {
+        log.debug("👨‍👩‍👧‍👦 Famille pour: {}", rootText);
         List<GeneratedWordResponse> family = new ArrayList<>();
-        
-        if (!rootService.rootExists(root)) {
-            GeneratedWordResponse error = new GeneratedWordResponse(
-                null, root, null, false,
-                "Erreur : La racine '" + root + "' n'existe pas."
-            );
-            family.add(error);
+
+        if (rootText == null || rootText.isBlank()) {
+            family.add(erreur(null, null, "La racine ne peut pas être vide."));
             return family;
         }
-        
-        List<String> schemeNames = schemeService.getSchemeNames();
-        log.info("Génération de {} mots pour la racine {}", schemeNames.size(), root);
-        
-        for (String schemeName : schemeNames) {
-            GeneratedWordResponse result = generateWord(root, schemeName);
-            family.add(result);
+        if (!rootService.rootExists(rootText)) {
+            family.add(erreur(rootText, null, "La racine '" + rootText + "' n'existe pas."));
+            return family;
         }
-        
-        log.info("✅ Famille générée: {} mots pour la racine {}", family.size(), root);
+
+        List<String> schemeNames = schemeService.getSchemeNames();
+        if (schemeNames == null || schemeNames.isEmpty()) {
+            family.add(erreur(rootText, null, "Aucun schème disponible."));
+            return family;
+        }
+
+        log.info("Génération de {} mots pour {}", schemeNames.size(), rootText);
+        int succes = 0;
+
+        for (String schemeName : schemeNames) {
+            try {
+                GeneratedWordResponse res = generateWord(rootText, schemeName);
+                family.add(res);
+                if (res.isSuccess()) succes++;
+            } catch (Exception e) {
+                log.error("❌ Exception pour schème '{}': {}", schemeName, e.getMessage(), e);
+                family.add(erreur(rootText, schemeName,
+                    "Erreur inattendue : " + e.getMessage()));
+            }
+        }
+
+        log.info("✅ {}/{} mots générés pour {}", succes, schemeNames.size(), rootText);
         return family;
+    }
+
+    private GeneratedWordResponse erreur(String racine, String scheme, String msg) {
+        log.error("❌ {}", msg);
+        return new GeneratedWordResponse(null, racine, scheme, false, "Erreur : " + msg);
     }
 }

@@ -209,7 +209,7 @@ const SchemeManagement = () => {
   // Filtrage local
   const filteredSchemes = schemes.filter(scheme =>
     scheme && scheme.name && 
-    scheme.name.toLowerCase().includes(searchTerm.toLowerCase())
+    scheme.name.toLowerCase().startsWith(searchTerm.toLowerCase())
   );
 
   return (
@@ -244,34 +244,47 @@ const SchemeManagement = () => {
       )}
 
       {/* Upload Section */}
-      <div className="card upload-card">
-        <div className="card-header">
-          <Upload size={20} />
-          <h3>رفع ملف الأوزان</h3>
-        </div>
-        <div className="card-body">
-          <div className="upload-area">
-            <input
-              type="file"
-              id="schemeFile"
-              accept=".txt"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-              disabled={loading}
-            />
-            <label htmlFor="schemeFile" className="upload-label">
-              <Upload size={24} />
-              <span>اختر ملف .txt بتنسيق: اسم_الوزن|القاعدة</span>
-              {selectedFile && <span className="file-name">{selectedFile.name}</span>}
-            </label>
-          </div>
-          <p className="upload-hint">
-            • تنسيق الملف: فاعل|1ا2ِ3<br />
-            • مفعول|م1و2و3<br />
-            • يجب أن يكون الملف بصيغة UTF-8
-          </p>
-        </div>
-      </div>
+<div className="card upload-card">
+  <div className="card-header">
+    <Upload size={20} />
+    <h3>رفع ملف الأوزان</h3>
+  </div>
+  <div className="card-body">
+    <input
+      type="file"
+      id="schemeFile"
+      accept=".txt"
+      onChange={handleFileUpload}
+      style={{ display: 'none' }}
+      disabled={loading}
+    />
+    <label
+      htmlFor="schemeFile"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px 20px',
+        border: '2px dashed #b8935f',
+        borderRadius: '8px',
+        background: '#fdfaf7',
+        cursor: loading ? 'not-allowed' : 'pointer',
+        fontFamily: 'var(--font-arabic)',
+        color: selectedFile ? '#2d6a6b' : '#888',
+        fontWeight: selectedFile ? 600 : 400,
+        transition: 'all 0.2s',
+      }}
+    >
+      {selectedFile ? selectedFile.name : 'انقر هنا لاختيار ملف .txt بتنسيق: اسم_الوزن|القاعدة'}
+    </label>
+
+    <p className="upload-hint" style={{ marginTop: 12 }}>
+      • تنسيق الملف: فاعل|1ا2ِ3<br />
+      • يجب أن يكون الملف بصيغة UTF-8
+    </p>
+  </div>
+</div>      
+
 
       {/* Add New Scheme */}
       <div className="card">
@@ -322,16 +335,34 @@ const SchemeManagement = () => {
       {/* Search */}
       <div className="card">
         <div className="card-body">
-          <div className="search-box">
-            <Search size={20} />
-            <input
-              type="text"
-              placeholder="ابحث عن وزن..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              disabled={loading}
-            />
-          </div>
+          <div className="search-box" style={{
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  border: '2px solid #ddd',
+  borderRadius: '8px',
+  padding: '8px 14px',
+  background: 'white',
+  transition: 'all 0.3s',
+}}>
+  <Search size={20} style={{ color: '#999', flexShrink: 0 }} />
+  <input
+    type="text"
+    placeholder="ابحث عن وزن..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    disabled={loading}
+    style={{
+      border: 'none',
+      outline: 'none',
+      width: '100%',
+      fontFamily: 'var(--font-arabic)',
+      fontSize: '0.95rem',
+      background: 'transparent',
+      direction: 'rtl',
+    }}
+  />
+</div>
         </div>
       </div>
 

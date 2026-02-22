@@ -5,6 +5,7 @@ import {
   FileText, 
   Wand2, 
   CheckCircle, 
+  Search        ,
   BarChart3
 } from 'lucide-react';
 
@@ -32,11 +33,15 @@ const Sidebar = () => {
       icon: <CheckCircle size={20} />, 
       label: 'الصحة الصرفية'
     },
+    { path: '/advanced',
+      icon: <Search size={20} />, 
+      label: 'البحث المتقدم' },
     { 
       path: '/statistics', 
       icon: <BarChart3 size={20} />, 
       label: 'الإحصائيات'
     }
+    
   ];
 
   return (

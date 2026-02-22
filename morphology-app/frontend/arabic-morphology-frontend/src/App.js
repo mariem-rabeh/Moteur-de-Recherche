@@ -7,6 +7,7 @@ import Generation from './components/Generation';
 import Validation from './components/Validation';
 import Statistics from './components/Statistics';
 import './styles/App.css';
+import AdvancedSearch from './components/AdvancedSearch';
 
 function App() {
   return (
@@ -18,7 +19,9 @@ function App() {
           <Route path="/schemes" element={<SchemeManagement />} />
           <Route path="/generation" element={<Generation />} />
           <Route path="/validation" element={<Validation />} />
+          <Route path="/advanced" element={<AdvancedSearch />} />
           <Route path="/statistics" element={<Statistics />} />
+          
         </Routes>
       </Layout>
     </Router>

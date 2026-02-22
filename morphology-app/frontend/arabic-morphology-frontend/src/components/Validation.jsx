@@ -213,7 +213,7 @@ const Validation = () => {
     <div className="page-container">
       <div className="breadcrumb">
         <span>الرئيسية</span>
-        <span className="separator">›</span>
+        <span className="separator">←</span>
         <span>الصحة الصرفية</span>
       </div>
 
@@ -359,60 +359,6 @@ const Validation = () => {
         </div>
       </div>
 
-      {/* Find All Roots */}
-      <div className="card">
-        <div className="card-header">
-          <Search size={20} />
-          <h3>إيجاد جميع الجذور المحتملة</h3>
-        </div>
-        <div className="card-body">
-          <div className="validation-form">
-            <div className="form-group">
-              <label>الكلمة:</label>
-              <input
-                type="text"
-                value={findRootsWord}
-                onChange={(e) => setFindRootsWord(e.target.value.trim())}
-                className="form-input"
-                placeholder="أدخل الكلمة للبحث (مثال: مكتوب)"
-              />
-            </div>
-            <button 
-              className="btn btn-info" 
-              onClick={handleFindAllRoots}
-              disabled={loadingFindRoots}
-            >
-              {loadingFindRoots ? <Loader className="spin" size={18} /> : <Search size={18} />}
-              بحث عن الجذور
-            </button>
-          </div>
-
-          {allRootsResult.length > 0 && (
-            <div className="result-box">
-              <h4>الجذور المحتملة للكلمة "{findRootsWord}"</h4>
-              <div className="roots-list">
-                {allRootsResult.map((item, index) => (
-                  <div key={index} className="root-result-item">
-                    {typeof item === 'string' ? (
-                      <span className="root-value">{item}</span>
-                    ) : (
-                      <>
-                        <span className="root-value">{item.root || item}</span>
-                        {item.scheme && (
-                          <span className="scheme-badge">{item.scheme}</span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="roots-count">
-                عدد الجذور المحتملة: {allRootsResult.length}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
     </div>
   );

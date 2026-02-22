@@ -199,74 +199,135 @@ const RootManagement = () => {
       )}
 
       {/* Upload Section */}
-      <div className="card upload-card">
-        <div className="card-header">
-          <Upload size={20} />
-          <h3>رفع ملف الجذور</h3>
-        </div>
-        <div className="card-body">
-          <div className="upload-area">
-            <input
-              type="file"
-              id="rootFile"
-              accept=".txt"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-              disabled={loading}
-            />
-            <label htmlFor="rootFile" className="upload-label">
-              <Upload size={24} />
-              <span>اختر ملف .txt يحتوي على جذور (جذر واحد في كل سطر)</span>
-              {selectedFile && <span className="file-name">{selectedFile.name}</span>}
-            </label>
-          </div>
-          <p className="upload-hint">
-            • الملف يجب أن يكون بصيغة UTF-8<br />
-            • جذر واحد في كل سطر<br />
-            • كل جذر يجب أن يحتوي على 3 أحرف عربية
-          </p>
-        </div>
+    <div className="card upload-card">
+      <div className="card-header">
+        <Upload size={24} />
+        <h3>رفع ملف الجذور</h3>
       </div>
+      <div className="card-body">
+        <input
+          type="file"
+          id="rootFile"
+          accept=".txt"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+          disabled={loading}
+        />
+        <label
+          htmlFor="rootFile"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px 20px',
+            border: '2px dashed #b8935f',
+            borderRadius: '8px',
+            background: '#fdfaf7',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontFamily: 'var(--font-arabic)',
+            color: selectedFile ? '#2d6a6b' : '#888',
+            fontWeight: selectedFile ? 600 : 400,
+            transition: 'all 0.2s',
+          }}
+        >
+          {selectedFile ? selectedFile.name : 'انقر هنا لاختيار ملف .txt'}
+        </label>
+
+        <p className="upload-hint" style={{ marginTop: 12 }}>
+          • الملف يجب أن يكون بصيغة UTF-8<br />
+          • جذر واحد في كل سطر<br />
+          • كل جذر يجب أن يحتوي على 3 أحرف عربية
+        </p>
+      </div>
+    </div>
 
       {/* Search and Add */}
-      <div className="card">
-        <div className="card-body">
-          <div className="action-row">
-            <div className="search-box">
-              <Search size={20} />
-              <input
-                type="text"
-                placeholder="ابحث عن جذر..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            
-            <div className="add-root-section">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="جذر جديد (مثال: كتب)"
-                value={newRoot}
-                onChange={(e) => setNewRoot(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddRoot()}
-                maxLength={3}
-                disabled={loading}
-              />
-              <button 
-                className="btn btn-primary"
-                onClick={handleAddRoot}
-                disabled={loading || !newRoot.trim()}
-              >
-                <Plus size={20} />
-                إضافة جذر
-              </button>
-            </div>
-          </div>
-        </div>
+<div className="card">
+  <div className="card-body">
+    <div className="action-row">
+
+      {/* Search box corrigé */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        border: '2px solid #ddd',
+        borderRadius: '8px',
+        padding: '8px 14px',
+        background: 'white',
+        flex: 1,
+      }}>
+        <Search size={20} style={{ color: '#999', flexShrink: 0 }} />
+        <input
+          type="text"
+          placeholder="ابحث عن جذر..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          disabled={loading}
+          style={{
+            border: 'none',
+            outline: 'none',
+            width: '100%',
+            fontFamily: 'var(--font-arabic)',
+            fontSize: '0.95rem',
+            background: 'transparent',
+            direction: 'rtl',
+          }}
+        />
       </div>
 
+      <div className="add-root-section" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+  <input
+    type="text"
+    placeholder="جذر جديد (مثال: كتب)"
+    value={newRoot}
+    onChange={(e) => setNewRoot(e.target.value)}
+    onKeyPress={(e) => e.key === 'Enter' && handleAddRoot()}
+    maxLength={3}
+    disabled={loading}
+    style={{
+      padding: '10px 16px',
+      border: '2px solid #ddd',
+      borderRadius: '8px',
+      fontFamily: 'var(--font-arabic)',
+      fontSize: '1rem',
+      outline: 'none',
+      direction: 'rtl',
+      width: '180px',
+      transition: 'border-color 0.2s',
+    }}
+  />
+  <button
+        onClick={handleAddRoot}
+        disabled={loading || !newRoot.trim()}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '10px 20px',
+          background: loading || !newRoot.trim()
+            ? '#ccc'
+            : 'linear-gradient(135deg, #2d6a6b 0%, #0d3b3f 100%)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          fontFamily: 'var(--font-arabic)',
+          fontSize: '0.95rem',
+          fontWeight: 700,
+          cursor: loading || !newRoot.trim() ? 'not-allowed' : 'pointer',
+          boxShadow: loading || !newRoot.trim() ? 'none' : '0 3px 10px rgba(13,59,63,0.3)',
+          transition: 'all 0.2s',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <Plus size={18} />
+        إضافة جذر
+      </button>
+    </div>
+
+    </div>
+  </div>
+</div>
       {/* Roots List */}
       <div className="card">
         <div className="card-header">

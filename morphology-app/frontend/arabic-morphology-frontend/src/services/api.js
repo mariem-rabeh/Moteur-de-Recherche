@@ -125,7 +125,15 @@ const api = {
 
   // ==================== STATISTICS ====================
   getStatistics: () =>
-    axiosInstance.get('/statistics')
+    axiosInstance.get('/statistics'),
+  
+  searchByScheme: (scheme) =>
+    axiosInstance.post('/search/by-scheme', { scheme }),
+
+  getDerivatives: (root) =>
+    axiosInstance.get(`/search/roots/${encodeURIComponent(root)}/derivatives`),
+  generateByScheme: (scheme) =>
+    axiosInstance.post('/generate/by-scheme', { scheme }),
 };
 
 export default api;

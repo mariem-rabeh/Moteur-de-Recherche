@@ -166,21 +166,6 @@ const Statistics = () => {
         </div>
       </div>
 
-      {/* Detailed Statistics - Schemes */}
-      <div className="card">
-        <div className="card-header">
-          <BarChart3 size={20} />
-          <h3>إحصائيات الأوزان</h3>
-        </div>
-        <div className="card-body">
-          <div className="stats-details">
-            <div className="stats-row">
-              <span className="stats-label">إجمالي الأوزان:</span>
-              <span className="stats-value">{stats.totalSchemes || 0}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Top Roots */}
       {stats.topRoots && Array.isArray(stats.topRoots) && stats.topRoots.length > 0 && (
